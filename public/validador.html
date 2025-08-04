@@ -19,6 +19,62 @@
     .success { background:#10b981; color:#fff; padding:4px 8px; border-radius:4px; }
     .error { background:#f87171; color:#fff; padding:4px 8px; border-radius:4px; }
     .hidden { display:none; }
+
+    /* new visual per-file */
+    .file-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px;
+      background: #23284b;
+      border-radius: 8px;
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .file-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: nowrap;
+    }
+    .file-title {
+      flex: 1;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      position: relative;
+    }
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .badge-small {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-success { background: #10b981; color: #fff; }
+    .badge-warning { background: #f59e0b; color: #1f1f1f; }
+    .badge-error { background: #f87171; color: #fff; }
+
+    .progress-bar {
+      background: #2f334b;
+      border-radius: 6px;
+      overflow: hidden;
+      height: 10px;
+      margin-top: 6px;
+    }
+    .progress-inner {
+      height: 100%;
+      transition: width .3s ease;
+      background: linear-gradient(90deg,#6366f1,#10b981);
+    }
   </style>
 </head>
 <body>
@@ -41,21 +97,21 @@
     </div>
     <div id="status" style="margin-top:12px;"></div>
   </div>
-<div class="card">
-  <h2>Upload de arquivo compactado (.zip / .rar)</h2>
-  <div class="inline">
-    <div style="flex:1;">
-      <label><strong>Arquivo .zip ou .rar</strong><br/>
-        <input type="file" id="archiveFile" accept=".zip,.rar" />
-      </label>
-    </div>
-    <div style="align-self:flex-end;">
-      <button id="btnValidateArchive">Validar arquivo compactado</button>
-    </div>
-  </div>
-  <div id="statusArchive" style="margin-top:8px;"></div>
-</div>
 
+  <div class="card">
+    <h2>Upload de arquivo compactado (.zip / .rar)</h2>
+    <div class="inline">
+      <div style="flex:1;">
+        <label><strong>Arquivo .zip ou .rar</strong><br/>
+          <input type="file" id="archiveFile" accept=".zip,.rar" />
+        </label>
+      </div>
+      <div style="align-self:flex-end;">
+        <button id="btnValidateArchive">Validar arquivo compactado</button>
+      </div>
+    </div>
+    <div id="statusArchive" style="margin-top:8px;"></div>
+  </div>
 
   <div id="resultArea" class="card hidden">
     <div style="display:flex; justify-content: space-between; flex-wrap: wrap; gap:10px;">
@@ -85,11 +141,17 @@
     </div>
   </div>
 
+  <div id="archiveDetailsContainer"></div>
+
   <script>
     const btn = document.getElementById('btnValidate');
     const statusEl = document.getElementById('status');
     const resultArea = document.getElementById('resultArea');
     let lastResult = null;
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
 
     btn.addEventListener('click', async () => {
       const fileInput = document.getElementById('spedFile');
@@ -99,6 +161,7 @@
       }
       statusEl.textContent = 'Enviando e validando...';
       resultArea.classList.add('hidden');
+      document.getElementById('archiveDetailsContainer').innerHTML = '';
       const form = new FormData();
       form.append('sped', fileInput.files[0]);
       const layoutVal = document.getElementById('layoutPath').value.trim();
@@ -111,15 +174,15 @@
         });
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}));
-          statusEl.innerHTML = '<div class=\"error\">Erro: ' + (err.erro||err.error||resp.status) + '</div>';
+          statusEl.innerHTML = '<div class="error">Erro: ' + (err.erro||err.error||resp.status) + '</div>';
           return;
         }
         const json = await resp.json();
         lastResult = json;
         renderResult(json);
-        statusEl.innerHTML = '<div class=\"success\">Validação concluída.</div>';
+        statusEl.innerHTML = '<div class="success">Validação concluída.</div>';
       } catch (e) {
-        statusEl.innerHTML = '<div class=\"error\">Falha na requisição: ' + e.message + '</div>';
+        statusEl.innerHTML = '<div class="error">Falha na requisição: ' + e.message + '</div>';
       }
     });
 
@@ -132,13 +195,13 @@
       `;
       const mb = document.getElementById('missingBlocks');
       if (r.missing_blocks.length === 0) {
-        mb.innerHTML = '<div class=\"success\">Nenhum bloco faltando</div>';
+        mb.innerHTML = '<div class="success">Nenhum bloco faltando</div>';
       } else {
-        mb.innerHTML = '<div>' + r.missing_blocks.map(b => `<span class=\"badge\">${b}</span>`).join(' ') + '</div>';
+        mb.innerHTML = '<div>' + r.missing_blocks.map(b => `<span class="badge">${b}</span>`).join(' ') + '</div>';
       }
       const disc = document.getElementById('discrepancies');
       if (r.field_count_discrepancies.length === 0) {
-        disc.innerHTML = '<div class=\"success\">Nenhuma discrepância</div>';
+        disc.innerHTML = '<div class="success">Nenhuma discrepância</div>';
       } else {
         let html = '<table><thead><tr><th>Registro</th><th>Esperado</th><th>Ocorrências</th><th>Exemplos</th></tr></thead><tbody>';
         for (const d of r.field_count_discrepancies) {
@@ -169,10 +232,6 @@
       }
     }
 
-    function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    }
-
     document.getElementById('btnDownloadJson').addEventListener('click', () => {
       if (!lastResult) return;
       const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: 'application/json' });
@@ -193,53 +252,105 @@
       a.download = `discrepancias_${Date.now()}.csv`;
       a.click();
     });
-  
-document.getElementById('btnValidateArchive').addEventListener('click', async () => {
-  const fileInput = document.getElementById('archiveFile');
-  if (!fileInput.files[0]) { alert('Selecione um .zip ou .rar'); return; }
-  const statusA = document.getElementById('statusArchive');
-  statusA.textContent = 'Enviando e processando...';
-  try {
-    const form = new FormData();
-    form.append('archive', fileInput.files[0]);
-    const resp = await fetch('/validate_layout_archive', { method: 'POST', body: form });
-    if (!resp.ok) {
-      const err = await resp.json().catch(()=>({}));
-      statusA.innerHTML = `<div class="error">Erro: ${err.erro || resp.status}</div>`;
-      return;
-    }
-    const json = await resp.json();
-    let summaryHtml = `<div>Total de arquivos: ${json.aggregate.total_files}</div>
-      <div>Com blocos faltando: ${json.aggregate.files_with_missing_blocks}</div>
-      <div>Com discrepâncias: ${json.aggregate.files_with_discrepancies}</div>
-      <div>Blocos únicos faltando no conjunto: ${json.aggregate.unique_missing_blocks.join(', ')}</div>`;
-    statusA.innerHTML = `<div class="success">Validação de archive concluída.</div>` + summaryHtml;
 
-    const container = document.createElement('div');
-    container.innerHTML = '<h3>Detalhes por arquivo</h3>';
-    for (const [fname, detail] of Object.entries(json.per_file)) {
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.innerHTML = `<strong>${fname}</strong> — blocos únicos: ${detail.total_unique_blocks || 0}, faltando: ${detail.missing_blocks?.length || 0}, discrepâncias: ${detail.field_count_discrepancies?.length || 0}
-        <button data-file="${fname}" class="see-json">Ver JSON</button>`;
-      container.appendChild(div);
-    }
-    resultArea.parentNode.insertBefore(container, resultArea.nextSibling);
+    // archive upload
+    document.getElementById('btnValidateArchive').addEventListener('click', async () => {
+      const fileInput = document.getElementById('archiveFile');
+      if (!fileInput.files[0]) { alert('Selecione um .zip ou .rar'); return; }
+      const statusA = document.getElementById('statusArchive');
+      statusA.innerHTML = 'Enviando e processando...';
+      resultArea.classList.add('hidden');
+      document.getElementById('archiveDetailsContainer').innerHTML = '';
+      try {
+        const form = new FormData();
+        form.append('archive', fileInput.files[0]);
+        const resp = await fetch('/validate_layout_archive', { method: 'POST', body: form });
+        if (!resp.ok) {
+          const err = await resp.json().catch(()=>({}));
+          statusA.innerHTML = `<div class="error">Erro: ${err.erro || resp.status}</div>`;
+          return;
+        }
+        const json = await resp.json();
+        // render agregado
+        let summaryHtml = `<div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div class="badge-small badge-success">Arquivos totais: ${json.aggregate.total_files}</div>
+          <div class="badge-small ${json.aggregate.files_with_missing_blocks? 'badge-error':'badge-success'}">Com blocos faltando: ${json.aggregate.files_with_missing_blocks}</div>
+          <div class="badge-small ${json.aggregate.files_with_discrepancies? 'badge-warning':'badge-success'}">Com discrepâncias: ${json.aggregate.files_with_discrepancies}</div>
+          <div class="badge-small badge-warning">Blocos únicos faltando: ${json.aggregate.unique_missing_blocks.join(', ')}</div>
+        </div>`;
+        statusA.innerHTML = `<div class="success">Validação de archive concluída.</div>` + summaryHtml;
 
-    container.querySelectorAll('.see-json').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const f = btn.getAttribute('data-file');
-        const payload = json.per_file[f];
-        const w = window.open();
-        w.document.body.innerHTML = `<pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
-      });
+        const container = document.createElement('div');
+        container.innerHTML = '<h3>Detalhes por arquivo</h3>';
+        for (const [fname, detail] of Object.entries(json.per_file)) {
+          const div = document.createElement('div');
+          div.className = 'file-card';
+
+          const totalIssues = (detail.missing_blocks?.length || 0) + (detail.field_count_discrepancies?.length || 0);
+          const score = Math.max(0, 1 - totalIssues / 5);
+          const percent = Math.round(score * 100);
+
+          const header = document.createElement('div');
+          header.className = 'file-header';
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'file-title';
+          titleDiv.textContent = fname;
+          titleDiv.title = fname;
+          header.appendChild(titleDiv);
+
+          const btnJson = document.createElement('button');
+          btnJson.textContent = 'Ver JSON';
+          btnJson.style.marginLeft = '8px';
+          btnJson.dataset.file = fname;
+          btnJson.className = 'see-json';
+          header.appendChild(btnJson);
+          div.appendChild(header);
+
+          const badges = document.createElement('div');
+          badges.className = 'badges';
+          const uniqueBlocksBadge = document.createElement('div');
+          uniqueBlocksBadge.className = 'badge-small badge-success';
+          uniqueBlocksBadge.textContent = `Blocos únicos: ${detail.total_unique_blocks || 0}`;
+          badges.appendChild(uniqueBlocksBadge);
+          const missingBadge = document.createElement('div');
+          missingBadge.className = 'badge-small ' + (detail.missing_blocks?.length ? 'badge-error' : 'badge-success');
+          missingBadge.textContent = `Faltando: ${detail.missing_blocks?.length || 0}`;
+          badges.appendChild(missingBadge);
+          const discrepBadge = document.createElement('div');
+          discrepBadge.className = 'badge-small ' + (detail.field_count_discrepancies?.length ? 'badge-warning' : 'badge-success');
+          discrepBadge.textContent = `Discrepâncias: ${detail.field_count_discrepancies?.length || 0}`;
+          badges.appendChild(discrepBadge);
+          div.appendChild(badges);
+
+          const progressWrapper = document.createElement('div');
+          progressWrapper.className = 'progress-bar';
+          const inner = document.createElement('div');
+          inner.className = 'progress-inner';
+          inner.style.width = `${percent}%`;
+          progressWrapper.appendChild(inner);
+          div.appendChild(progressWrapper);
+          const progressLabel = document.createElement('div');
+          progressLabel.className = 'small';
+          progressLabel.textContent = `Completude estimada: ${percent}%`;
+          div.appendChild(progressLabel);
+
+          container.appendChild(div);
+        }
+        document.getElementById('archiveDetailsContainer').appendChild(container);
+
+        container.querySelectorAll('.see-json').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const f = btn.getAttribute('data-file');
+            const payload = json.per_file[f];
+            const w = window.open();
+            w.document.body.innerHTML = `<pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+          });
+        });
+
+      } catch (e) {
+        statusA.innerHTML = `<div class="error">Erro interno: ${e.message}</div>`;
+      }
     });
-
-  } catch (e) {
-    statusA.innerHTML = `<div class="error">Erro interno: ${e.message}</div>`;
-  }
-});
-
-</script>
+  </script>
 </body>
 </html>

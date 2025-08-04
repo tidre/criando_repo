@@ -1,7 +1,6 @@
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
-const fsPromises = fs.promises;
 const path = require('path');
 const readline = require('readline');
 const unzipper = require('unzipper');
@@ -162,7 +161,7 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
         .pipe(unzipper.Parse())
         .on('entry', async (entry) => {
           const fileName = entry.path;
-          const sanitized = path.normalize(fileName).replace(/^(\.\.(\/|\\|$))+/g, '');
+          const sanitized = path.normalize(fileName).replace(/^(\.\.(\\/|\\\\|$))+/, '');
           const destPath = path.join(tempDir, sanitized);
           if (!destPath.startsWith(path.resolve(tempDir))) {
             entry.autodrain();
@@ -194,13 +193,12 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           files = files.concat(await walk(full));
-        } else if (/\.txt$/i.test(entry.name)) {
+        } else if (/\\.txt$/i.test(entry.name)) {
           files.push(full);
         }
       }
       return files;
     };
-    
 
     const txtFiles = await walk(tempDir);
     if (txtFiles.length === 0) {
