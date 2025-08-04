@@ -300,7 +300,7 @@
           header.appendChild(titleDiv);
 
           const btnJson = document.createElement('button');
-          btnJson.textContent = 'Ver JSON';
+          btnJson.textContent = 'Exportar JSON';
           btnJson.style.marginLeft = '8px';
           btnJson.dataset.file = fname;
           btnJson.className = 'see-json';
@@ -343,8 +343,13 @@
           btn.addEventListener('click', () => {
             const f = btn.getAttribute('data-file');
             const payload = json.per_file[f];
-            const w = window.open();
-            w.document.body.innerHTML = `<pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+            const filename = f.replace(/[\/\\]/g, '_') + '_relatorio.json';
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(a.href);
           });
         });
 
