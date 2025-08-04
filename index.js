@@ -161,7 +161,7 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
         .pipe(unzipper.Parse())
         .on('entry', async (entry) => {
           const fileName = entry.path;
-          const sanitized = path.normalize(fileName).replace(/^(\.\.(\\/|\\\\|$))+/, '');
+          const sanitized = path.normalize(fileName).replace(/^(\.\.(\/|\\|$))+/g, '');
           const destPath = path.join(tempDir, sanitized);
           if (!destPath.startsWith(path.resolve(tempDir))) {
             entry.autodrain();
