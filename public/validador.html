@@ -41,6 +41,21 @@
     </div>
     <div id="status" style="margin-top:12px;"></div>
   </div>
+<div class="card">
+  <h2>Upload de arquivo compactado (.zip / .rar)</h2>
+  <div class="inline">
+    <div style="flex:1;">
+      <label><strong>Arquivo .zip ou .rar</strong><br/>
+        <input type="file" id="archiveFile" accept=".zip,.rar" />
+      </label>
+    </div>
+    <div style="align-self:flex-end;">
+      <button id="btnValidateArchive">Validar arquivo compactado</button>
+    </div>
+  </div>
+  <div id="statusArchive" style="margin-top:8px;"></div>
+</div>
+
 
   <div id="resultArea" class="card hidden">
     <div style="display:flex; justify-content: space-between; flex-wrap: wrap; gap:10px;">
@@ -178,6 +193,53 @@
       a.download = `discrepancias_${Date.now()}.csv`;
       a.click();
     });
-  </script>
+  
+document.getElementById('btnValidateArchive').addEventListener('click', async () => {
+  const fileInput = document.getElementById('archiveFile');
+  if (!fileInput.files[0]) { alert('Selecione um .zip ou .rar'); return; }
+  const statusA = document.getElementById('statusArchive');
+  statusA.textContent = 'Enviando e processando...';
+  try {
+    const form = new FormData();
+    form.append('archive', fileInput.files[0]);
+    const resp = await fetch('/validate_layout_archive', { method: 'POST', body: form });
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({}));
+      statusA.innerHTML = `<div class="error">Erro: ${err.erro || resp.status}</div>`;
+      return;
+    }
+    const json = await resp.json();
+    let summaryHtml = `<div>Total de arquivos: ${json.aggregate.total_files}</div>
+      <div>Com blocos faltando: ${json.aggregate.files_with_missing_blocks}</div>
+      <div>Com discrepâncias: ${json.aggregate.files_with_discrepancies}</div>
+      <div>Blocos únicos faltando no conjunto: ${json.aggregate.unique_missing_blocks.join(', ')}</div>`;
+    statusA.innerHTML = `<div class="success">Validação de archive concluída.</div>` + summaryHtml;
+
+    const container = document.createElement('div');
+    container.innerHTML = '<h3>Detalhes por arquivo</h3>';
+    for (const [fname, detail] of Object.entries(json.per_file)) {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `<strong>${fname}</strong> — blocos únicos: ${detail.total_unique_blocks || 0}, faltando: ${detail.missing_blocks?.length || 0}, discrepâncias: ${detail.field_count_discrepancies?.length || 0}
+        <button data-file="${fname}" class="see-json">Ver JSON</button>`;
+      container.appendChild(div);
+    }
+    resultArea.parentNode.insertBefore(container, resultArea.nextSibling);
+
+    container.querySelectorAll('.see-json').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const f = btn.getAttribute('data-file');
+        const payload = json.per_file[f];
+        const w = window.open();
+        w.document.body.innerHTML = `<pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+      });
+    });
+
+  } catch (e) {
+    statusA.innerHTML = `<div class="error">Erro interno: ${e.message}</div>`;
+  }
+});
+
+</script>
 </body>
 </html>
