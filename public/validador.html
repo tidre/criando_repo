@@ -19,6 +19,7 @@
     .success { background:#10b981; color:#fff; padding:4px 8px; border-radius:4px; }
     .error { background:#f87171; color:#fff; padding:4px 8px; border-radius:4px; }
     .hidden { display:none; }
+    .archive { padding-bottom: 20px; }
 
     /* new visual per-file */
     .file-card {
@@ -278,7 +279,7 @@
           <div class="badge-small ${json.aggregate.files_with_discrepancies? 'badge-warning':'badge-success'}">Com discrepâncias: ${json.aggregate.files_with_discrepancies}</div>
           <div class="badge-small badge-warning">Blocos únicos faltando: ${json.aggregate.unique_missing_blocks.join(', ')}</div>
         </div>`;
-        statusA.innerHTML = `<div class="success">Validação de archive concluída.</div>` + summaryHtml;
+        statusA.innerHTML = `<div class="success archive">Validação de archive concluída.</div>` + summaryHtml;
 
         const container = document.createElement('div');
         container.innerHTML = '<h3>Detalhes por arquivo</h3>';
