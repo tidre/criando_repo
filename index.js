@@ -112,7 +112,7 @@ app.post('/validate_layout', uploadSingle.single('sped'), async (req, res) => {
 
     return res.json({
       total_unique_blocks: occArr.length,
-      block_occurrences: Object.fromEntries(occArr),
+      block_occurrences: Object.fromEntries(occArr).sort(),
       missing_blocks: missArr,
       field_count_discrepancies: raw.field_count_discrepancies,
     });
