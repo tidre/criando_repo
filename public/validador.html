@@ -266,6 +266,7 @@
       if (!fileInput.files[0]) { alert('Selecione um .zip ou .rar'); return; }
       const statusA = document.getElementById('statusArchive');
       const statusEl = document.getElementById('status');
+      statusA.classList.remove('hidden');
       statusA.innerHTML = 'Enviando e processando...';
       resultArea.classList.add('hidden');
       statusEl.classList.add('hidden');
