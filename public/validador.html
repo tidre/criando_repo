@@ -148,8 +148,8 @@
     const btn = document.getElementById('btnValidate');
     const statusEl = document.getElementById('status');
     const resultArea = document.getElementById('resultArea');
-    const statusA = document.getElementById('statusArchive');
-    const summaryHtml = document.getElementById('summaryHtml');
+    //const statusA = document.getElementById('statusArchive');
+    //const summaryHtml = document.getElementById('summaryHtml');
     let lastResult = null;
 
     function escapeHtml(str) {
@@ -164,8 +164,8 @@
       }
       statusEl.textContent = 'Enviando e validando...';
       resultArea.classList.add('hidden');
-      statusA.classList.add('hidden');
-      summaryHtml.classList.add('hidden');
+      //statusA.classList.add('hidden');
+      //summaryHtml.classList.add('hidden');
       document.getElementById('archiveDetailsContainer').innerHTML = '';
       const form = new FormData();
       form.append('sped', fileInput.files[0]);
@@ -264,8 +264,10 @@
       const fileInput = document.getElementById('archiveFile');
       if (!fileInput.files[0]) { alert('Selecione um .zip ou .rar'); return; }
       const statusA = document.getElementById('statusArchive');
+      const statusEl = document.getElementById('status');
       statusA.innerHTML = 'Enviando e processando...';
       resultArea.classList.add('hidden');
+      statusEl.classList.add('hidden');
       document.getElementById('archiveDetailsContainer').innerHTML = '';
       try {
         const form = new FormData();
