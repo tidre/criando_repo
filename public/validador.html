@@ -148,8 +148,8 @@
     const btn = document.getElementById('btnValidate');
     const statusEl = document.getElementById('status');
     const resultArea = document.getElementById('resultArea');
-    //const statusA = document.getElementById('statusArchive');
-    //const summaryHtml = document.getElementById('summaryHtml');
+    const statusA = document.getElementById('statusArchive');
+    const summaryHtml = document.getElementById('summaryHtml');
     let lastResult = null;
 
     function escapeHtml(str) {
@@ -162,10 +162,11 @@
         alert('Selecione o arquivo .txt do SPED');
         return;
       }
+      statusEl.classList.remove('hidden');
       statusEl.textContent = 'Enviando e validando...';
       resultArea.classList.add('hidden');
-      //statusA.classList.add('hidden');
-      //summaryHtml.classList.add('hidden');
+      statusA.classList.add('hidden');
+      summaryHtml.classList.add('hidden');
       document.getElementById('archiveDetailsContainer').innerHTML = '';
       const form = new FormData();
       form.append('sped', fileInput.files[0]);
