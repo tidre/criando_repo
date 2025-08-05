@@ -220,18 +220,18 @@
         disc.innerHTML = html;
       }
       const oc = document.getElementById('occurrences');
-      const occEntries = Object.entries(r.block_occurrences || {});
-      console.log("occEntries: " + occEntries);
-      if (occEntries.length === 0) {
+      const occArr = r.block_occurrences || [];
+      if (occArr.length === 0) {
         oc.textContent = 'Nenhuma ocorrência registrada.';
       } else {
         let h = '<table><thead><tr><th>Bloco</th><th>Ocorrências</th></tr></thead><tbody>';
-        for (const [blk, cnt] of occEntries) {
-          h += `<tr><td>${blk}</td><td>${cnt}</td></tr>`;
+        for (const { registro, ocorrencias } of occArr) {
+          h += `<tr><td>${registro}</td><td>${ocorrencias}</td></tr>`;
         }
         h += '</tbody></table>';
         oc.innerHTML = h;
       }
+
     }
 
     document.getElementById('btnDownloadJson').addEventListener('click', () => {
