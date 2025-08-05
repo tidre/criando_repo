@@ -123,7 +123,10 @@ app.post('/validate_layout', uploadValidation.single('sped'), async (req, res) =
     // limpar arquivo temporário
     try { fs.unlinkSync(filePath); } catch {}
 
-    const missingArr = Array.from(missingBlocks).sort((a,b)=>layoutOrder.indexOf(a)-layoutOrder.indexOf(b));
+    const missingArr = Array.from(missingBlocks)
+    // ordena de acordo com layoutOrder
+    missingArr.sort((a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b));
+
     const summary = {
       total_unique_blocks: Object.keys(blockOccurrences).length,
       block_occurrences: blockOccurrences,
@@ -218,10 +221,10 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
     const summaries = {};
     for (const f of txtFiles) {
       try {
-        const s = await validateOneSpedFile(f, layout);
-         // ordena os missing_blocks de cada arquivo
-        s.missing_blocks.sort((a,b)=>layoutOrder.indexOf(a)-layoutOrder.indexOf(b));
-        summaries[path.relative(tempDir, f)] = s;
+        const rawSummary = await validateOneSpedFile(f, layout);
+        // ordena também os campos de cada summary
+        rawSummary.missing_blocks.sort((a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b));
+        summaries[path.relative(tempDir, f)] = rawSummary;
       } catch (e) {
         summaries[path.relative(tempDir, f)] = { erro: e.message };
       }
@@ -243,7 +246,8 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
       }
     }
     const uniq = Array.from(aggregate.unique_missing_blocks);
-    aggregate.unique_missing_blocks = uniq.sort((a,b)=>layoutOrder.indexOf(a)-layoutOrder.indexOf(b));
+    // ordena igual
+    aggregate.unique_missing_blocks = uniq.sort((a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b));
 
     res.json({ aggregate, per_file: summaries });
   } catch (err) {
