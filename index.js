@@ -26,7 +26,10 @@ const keyRegex = /"([^\"]+)":\s*\[/g;
 let match;
 while ((match = keyRegex.exec(layoutText))) {
   layoutOrder.push(match[1]);
+  console.log("Bloco: " + match[1]);
 }
+
+console.log("LAYOUT COMPLETO: " + layoutOrder);
 
 // Parseia o JSON para uso em validações
 let layout;
