@@ -9,12 +9,27 @@ const { spawnSync } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 22000;
-
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-// Função que valida um único arquivo .txt
-async function validateOneSpedFile(filePath, layout) {
+// === 1) Carrega layout e ordem GLOBALMENTE ===
+const LAYOUT_PATH = path.join(__dirname, 'layout_blocos.json');
+if (!fs.existsSync(LAYOUT_PATH)) {
+  console.error('layout_blocos.json não encontrado em', LAYOUT_PATH);
+  process.exit(1);
+}
+let layoutRaw = fs.readFileSync(LAYOUT_PATH, { encoding: 'latin1' });
+let layout, layoutOrder;
+try {
+  layout = JSON.parse(layoutRaw);
+  layoutOrder = Object.keys(layout);
+} catch (e) {
+  console.error('Falha ao parsear layout_blocos.json:', e.message);
+  process.exit(1);
+}
+
+// Helper que valida um único .txt
+async function validateOneSpedFile(filePath) {
   const blockOccurrences = {};
   const missingBlocks = new Set();
   const fieldDiscrepancies = {};
@@ -29,7 +44,6 @@ async function validateOneSpedFile(filePath, layout) {
     lineNum++;
     const line = lineRaw.trim();
     if (!line.startsWith('|')) continue;
-
     const parts = line.replace(/^\|/, '').replace(/\|$/, '').split('|');
     const reg = parts[0];
     blockOccurrences[reg] = (blockOccurrences[reg] || 0) + 1;
@@ -40,7 +54,6 @@ async function validateOneSpedFile(filePath, layout) {
       missingBlocks.add(reg);
       continue;
     }
-
     const expectedFields = expectedDef.length - 1;
     if (actualFields !== expectedFields) {
       if (!fieldDiscrepancies[reg]) {
@@ -74,85 +87,51 @@ async function validateOneSpedFile(filePath, layout) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rota para validar upload único
-const uploadValidation = multer({ dest: path.join(UPLOADS_DIR, 'tmp') });
-app.post('/validate_layout', uploadValidation.single('sped'), async (req, res) => {
+// === 2) Rota upload único ===
+const uploadSingle = multer({ dest: path.join(UPLOADS_DIR, 'tmp') });
+app.post('/validate_layout', uploadSingle.single('sped'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ erro: 'Envie o .txt no campo "sped"' });
+  }
   try {
-    // Carrega e parseia layout
-    const layoutPath = req.body.layout || path.join(__dirname, 'layout_blocos.json');
-    if (!fs.existsSync(layoutPath)) {
-      return res.status(400).json({ erro: 'layout_blocos.json não encontrado', caminho: layoutPath });
-    }
-    const layoutRaw = fs.readFileSync(layoutPath, { encoding: 'latin1' });
-    let layout, layoutOrder;
-    try {
-      layout = JSON.parse(layoutRaw);
-      layoutOrder = Object.keys(layout);
-    } catch (e) {
-      return res.status(500).json({ erro: 'Falha ao parsear layout', detalhes: e.message });
-    }
+    // valida
+    const raw = await validateOneSpedFile(req.file.path);
+    // limpa
+    fs.unlinkSync(req.file.path);
 
-    if (!req.file) {
-      return res.status(400).json({ erro: 'Arquivo SPED não enviado (campo "sped")' });
-    }
-
-    // Valida o arquivo
-    const summaryRaw = await validateOneSpedFile(req.file.path, layout);
-    // limpa temporário
-    try { fs.unlinkSync(req.file.path); } catch {}
-
-    // Ordena block_occurrences conforme layoutOrder
-    const occArr = Object.entries(summaryRaw.block_occurrences)
+    // ordena block_occurrences
+    const occArr = Object.entries(raw.block_occurrences)
       .sort(([a], [b]) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b));
+    // ordena missing_blocks
+    const missArr = raw.missing_blocks.sort(
+      (a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b)
+    );
 
-    // Ordena missing_blocks conforme layoutOrder
-    const missArr = summaryRaw.missing_blocks
-      .sort((a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b));
-
-    // Monta resposta final
-    const summary = {
+    return res.json({
       total_unique_blocks: occArr.length,
       block_occurrences: Object.fromEntries(occArr),
       missing_blocks: missArr,
-      field_count_discrepancies: summaryRaw.field_count_discrepancies
-    };
-
-    return res.json(summary);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ erro: 'falha validacao', detalhes: err.message });
+      field_count_discrepancies: raw.field_count_discrepancies
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ erro: 'falha validacao', detalhes: e.message });
   }
 });
 
-// Rota para validar .zip / .rar com múltiplos .txt
+// === 3) Rota upload de .zip/.rar ===
 const uploadArchive = multer({ dest: path.join(UPLOADS_DIR, 'archives') });
 app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ erro: 'Envie um arquivo .zip ou .rar (campo "archive")' });
+    return res.status(400).json({ erro: 'Envie .zip ou .rar no campo "archive"' });
   }
-
-  // Carrega layout
-  const layoutPath = req.body.layout || path.join(__dirname, 'layout_blocos.json');
-  if (!fs.existsSync(layoutPath)) {
-    return res.status(400).json({ erro: 'layout_blocos.json não encontrado', caminho: layoutPath });
-  }
-  const layoutRaw = fs.readFileSync(layoutPath, { encoding: 'latin1' });
-  let layout, layoutOrder;
-  try {
-    layout = JSON.parse(layoutRaw);
-    layoutOrder = Object.keys(layout);
-  } catch (e) {
-    return res.status(500).json({ erro: 'Falha ao parsear layout', detalhes: e.message });
-  }
-
-  // Pasta temporária de extração
+  const archivePath = req.file.path;
+  const nameLower = req.file.originalname.toLowerCase();
   const tempDir = path.join(UPLOADS_DIR, `extract_${Date.now()}`);
   fs.mkdirSync(tempDir, { recursive: true });
 
-  // Extrai ZIP ou RAR
-  const archivePath = req.file.path;
-  const nameLower = req.file.originalname.toLowerCase();
   try {
+    // extrai
     if (nameLower.endsWith('.zip')) {
       await fs.createReadStream(archivePath)
         .pipe(unzipper.Parse())
@@ -172,52 +151,51 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
           }
         })
         .promise();
+
     } else if (nameLower.endsWith('.rar')) {
       const result = spawnSync('unrar', ['x', '-y', archivePath, tempDir]);
       if (result.status !== 0) {
         throw new Error(result.stderr.toString() || result.stdout.toString());
       }
     } else {
-      return res.status(400).json({ erro: 'Formato não suportado. Use .zip ou .rar' });
+      return res.status(400).json({ erro: 'Formato não suportado — use .zip ou .rar' });
     }
 
-    // Coleta todos .txt extraídos
+    // encontra .txt
     async function walk(dir) {
-      let out = [];
+      let fns = [];
       for (const ent of await fsPromises.readdir(dir, { withFileTypes: true })) {
         const full = path.join(dir, ent.name);
         if (ent.isDirectory()) {
-          out = out.concat(await walk(full));
+          fns = fns.concat(await walk(full));
         } else if (/\.txt$/i.test(ent.name)) {
-          out.push(full);
+          fns.push(full);
         }
       }
-      return out;
+      return fns;
     }
     const txtFiles = await walk(tempDir);
     if (!txtFiles.length) {
-      return res.status(404).json({ erro: 'Nenhum .txt encontrado no archive' });
+      return res.status(404).json({ erro: 'Nenhum .txt dentro do archive' });
     }
 
-    // Valida cada .txt
+    // valida cada um
     const per_file = {};
     for (const f of txtFiles) {
       try {
-        const raw = await validateOneSpedFile(f, layout);
-
-        // Ordena no raw
-        const occArr2 = Object.entries(raw.block_occurrences)
+        const raw = await validateOneSpedFile(f);
+        // ordena
+        const occArr = Object.entries(raw.block_occurrences)
           .sort(([a], [b]) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b));
-        raw.block_occurrences = Object.fromEntries(occArr2);
+        raw.block_occurrences = Object.fromEntries(occArr);
         raw.missing_blocks.sort((a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b));
-
         per_file[path.relative(tempDir, f)] = raw;
       } catch (e) {
         per_file[path.relative(tempDir, f)] = { erro: e.message };
       }
     }
 
-    // Monta estatísticas agregadas
+    // agregado
     const aggregate = {
       total_files: txtFiles.length,
       files_with_missing_blocks: 0,
@@ -225,11 +203,11 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
       unique_missing_blocks: new Set()
     };
     Object.values(per_file).forEach(s => {
-      if (s.missing_blocks?.length) {
+      if (s.missing_blocks.length) {
         aggregate.files_with_missing_blocks++;
         s.missing_blocks.forEach(b => aggregate.unique_missing_blocks.add(b));
       }
-      if (s.field_count_discrepancies?.length) {
+      if (s.field_count_discrepancies.length) {
         aggregate.files_with_discrepancies++;
       }
     });
@@ -238,10 +216,10 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
       (a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b)
     );
 
-    res.json({ aggregate, per_file });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: 'Falha ao processar archive', detalhes: err.message });
+    return res.json({ aggregate, per_file });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ erro: 'Falha archive', detalhes: e.message });
   } finally {
     // cleanup
     try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
@@ -250,5 +228,5 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
 });
 
 app.listen(PORT, () => {
-  console.log(`Validador SPED rodando em http://localhost:${PORT}`);
+  console.log(`Validador SPED em http://localhost:${PORT}`);
 });
