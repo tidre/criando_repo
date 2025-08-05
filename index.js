@@ -26,10 +26,7 @@ const keyRegex = /"([^\"]+)":\s*\[/g;
 let match;
 while ((match = keyRegex.exec(layoutText))) {
   layoutOrder.push(match[1]);
-  console.log("Bloco: " + match[1]);
 }
-
-console.log("LAYOUT COMPLETO: " + layoutOrder);
 
 // Parseia o JSON para uso em validações
 let layout;
@@ -110,6 +107,9 @@ app.post('/validate_layout', uploadSingle.single('sped'), async (req, res) => {
     const missArr = raw.missing_blocks.sort(
       (a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b)
     );
+
+    console.log("occArr: " + occArr);
+    console.log("missArr: " + missArr);
 
     return res.json({
       total_unique_blocks: occArr.length,
