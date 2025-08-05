@@ -278,7 +278,12 @@
           <div class="badge-small badge-success">Arquivos totais: ${json.aggregate.total_files}</div>
           <div class="badge-small ${json.aggregate.files_with_missing_blocks? 'badge-error':'badge-success'}">Com blocos faltando: ${json.aggregate.files_with_missing_blocks}</div>
           <div class="badge-small ${json.aggregate.files_with_discrepancies? 'badge-warning':'badge-success'}">Com discrepâncias: ${json.aggregate.files_with_discrepancies}</div>
-          <div class="badge-small badge-warning">Blocos únicos faltando: ${json.aggregate.unique_missing_blocks.join(', ') || "Nenhum"}</div>
+          ${(() => {
+            const um = json.aggregate.unique_missing_blocks || [];
+            return `<div class="badge-small ${um.length ? 'badge-warning' : 'badge-success'}">
+              Blocos únicos faltando: ${um.length ? um.join(', ') : 'Nenhum'}
+            </div>`;
+          })()}
         </div>`;
         statusA.innerHTML = `<div class="success archive">Validação de archive concluída.</div>` + summaryHtml;
 
