@@ -76,7 +76,11 @@ app.post('/validate_layout', uploadValidation.single('sped'), async (req, res) =
     }
     const layoutRaw = fs.readFileSync(layoutPath, { encoding: 'latin1' });
     let layout;
-    try { layout = JSON.parse(layoutRaw); } catch (e) { return res.status(500).json({ erro: 'Falha ao parsear layout_blocos.json', detalhes: e.message }); }
+    try { 
+      layout = JSON.parse(layoutRaw);
+      // Mantém a ordem de definição dos blocos
+      const layoutOrder = Object.keys(layout);
+     } catch (e) { return res.status(500).json({ erro: 'Falha ao parsear layout_blocos.json', detalhes: e.message }); }
     if (!req.file) {
       return res.status(400).json({ erro: 'Arquivo SPED .txt (campo \"sped\") não enviado' });
     }
@@ -119,10 +123,11 @@ app.post('/validate_layout', uploadValidation.single('sped'), async (req, res) =
     // limpar arquivo temporário
     try { fs.unlinkSync(filePath); } catch {}
 
+    const missingArr = Array.from(missingBlocks).sort((a,b)=>layoutOrder.indexOf(a)-layoutOrder.indexOf(b));
     const summary = {
       total_unique_blocks: Object.keys(blockOccurrences).length,
       block_occurrences: blockOccurrences,
-      missing_blocks: Array.from(missingBlocks),
+      missing_blocks: missingArr,
       field_count_discrepancies: Object.entries(fieldDiscrepancies).map(([reg, v]) => ({
         registro: reg,
         expected_fields: v.expected,
@@ -148,7 +153,11 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
   if (!fs.existsSync(layoutPath)) return res.status(400).json({ erro: 'layout_blocos.json não encontrado', caminho: layoutPath });
   const layoutRaw = fs.readFileSync(layoutPath, { encoding: 'latin1' });
   let layout;
-  try { layout = JSON.parse(layoutRaw); } catch (e) { return res.status(500).json({ erro: 'Erro ao parsear layout', detalhes: e.message }); }
+  try { 
+    layout = JSON.parse(layoutRaw); 
+    // Mantém a ordem de definição dos blocos
+    const layoutOrder = Object.keys(layout);
+  } catch (e) { return res.status(500).json({ erro: 'Erro ao parsear layout', detalhes: e.message }); }
 
   const tempDir = path.join(UPLOADS_DIR, `extract_${Date.now()}`);
   fs.mkdirSync(tempDir, { recursive: true });
@@ -209,7 +218,10 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
     const summaries = {};
     for (const f of txtFiles) {
       try {
-        summaries[path.relative(tempDir, f)] = await validateOneSpedFile(f, layout);
+        const s = await validateOneSpedFile(f, layout);
+         // ordena os missing_blocks de cada arquivo
+        s.missing_blocks.sort((a,b)=>layoutOrder.indexOf(a)-layoutOrder.indexOf(b));
+        summaries[path.relative(tempDir, f)] = s;
       } catch (e) {
         summaries[path.relative(tempDir, f)] = { erro: e.message };
       }
@@ -230,7 +242,8 @@ app.post('/validate_layout_archive', uploadArchive.single('archive'), async (req
         aggregate.files_with_discrepancies++;
       }
     }
-    aggregate.unique_missing_blocks = Array.from(aggregate.unique_missing_blocks);
+    const uniq = Array.from(aggregate.unique_missing_blocks);
+    aggregate.unique_missing_blocks = uniq.sort((a,b)=>layoutOrder.indexOf(a)-layoutOrder.indexOf(b));
 
     res.json({ aggregate, per_file: summaries });
   } catch (err) {
