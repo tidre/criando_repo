@@ -108,12 +108,7 @@ app.post('/validate_layout', uploadSingle.single('sped'), async (req, res) => {
       (a, b) => layoutOrder.indexOf(a) - layoutOrder.indexOf(b)
     );
 
-    console.log("RETORNO: " + res.json({
-      total_unique_blocks: occArr.length,
-      block_occurrences: Object.fromEntries(occArr),
-      missing_blocks: missArr,
-      field_count_discrepancies: raw.field_count_discrepancies,
-    }));
+    console.log("RETORNO: " + Object.fromEntries(occArr));
 
     return res.json({
       total_unique_blocks: occArr.length,
