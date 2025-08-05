@@ -220,7 +220,7 @@
         disc.innerHTML = html;
       }
       const oc = document.getElementById('occurrences');
-      occEntries.sort((a, b) => layoutOrder.indexOf(a[0]) - layoutOrder.indexOf(b[0]));
+      const occEntries = Object.entries(r.block_occurrences || {});
       if (occEntries.length === 0) {
         oc.textContent = 'Nenhuma ocorrência registrada.';
       } else {
