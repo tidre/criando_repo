@@ -110,7 +110,7 @@
   "F560": ["reg","vl_tot_rec","vl_tot_ded","vl_bc_pis","vl_pis","vl_bc_cofins","vl_cofins"],
   "F569": ["reg","num_proc","ind_proc"],
   "F600": ["reg","ind_nat_ret","dt_ret","vl_bc_ret","vl_ret","cod_rec","ind_nat_rec","cnpj","vl_ret_pis","vl_ret_cofins","ind_dec"],
-  "F700": ["reg","cod_aj","vl_aj","descr_aj"],
+  "F700": ["reg","ind_ori_ded","ind_nat_ded","vl_ded_pis","vl_ded_cofins","vl_bc_oper","cnpj","inf_comp"],
   "F800": ["reg","cod_evento","vl_cred","descr_evento"],
   "F990": ["reg","qtd_lin_f"],
   "I001": ["reg","ind_mov"],
